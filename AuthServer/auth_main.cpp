@@ -8,7 +8,7 @@ int main(int argc, char** argv)
 {
 	
 	database.Connect("127.0.0.1", "root", "password");
-	database.CreateAccount("l_gustafson@fanshaweonline.ca", "password");
+	database.CreateAccount("test@gmail.com", "password");
 	system("Pause");
 	return 0;
 }

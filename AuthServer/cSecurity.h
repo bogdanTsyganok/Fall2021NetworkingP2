@@ -27,7 +27,7 @@ public:
 	/// <summary>
 	/// Generates a new salt for use in password hashing
 	/// </summary>
-	void GenerateSalt();
+	std::string GenerateSalt();
 
 	/// <summary>
 	/// Hashes user given plain text password with sha256 and stored salt, if no salt is stored it will generate new salt

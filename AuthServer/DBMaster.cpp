@@ -1,4 +1,6 @@
 #include "DBMaster.h"
+#include "cSecurity.h"
+#include "cUser.h"
 
 DBMaster::DBMaster(void)
 	: m_IsConnected(false)
@@ -16,22 +18,16 @@ bool DBMaster::IsConnected(void)
 
 CreateAccountWebResult DBMaster::CreateAccount(const string& email, const string& password)
 {
+	cSecurity* hasher = new cSecurity();
 	sql::Statement* stmt = m_Connection->createStatement();
-	
-	//sql::PreparedStatement* preparedStatement = m_Connection->prepareStatement("SELECT * FROM `web_auth`;");
-	sql::PreparedStatement* prep_stmt = m_Connection->prepareStatement("INSERT INTO web_auth(email, salt, hashed_password, userId) VALUES (?, ?, ?, ?)");
-	prep_stmt->setString(1, "testEmail");
-	prep_stmt->setString(2, "salt");
-	prep_stmt->setString(3, "password");
-	prep_stmt->setInt(4, 123);
-	//preparedStatement->setString(1, "web_auth");
+	cUser newUser;
+	//sql::PreparedStatement* retrieve_stmt = m_Connection->prepareStatement("SELECT email, salt, hashed_password, userId FROM web_auth VALUES (?, ?, ?, ?)");
 
-	
-
+	//Check if email is already in use 
 	try
 	{
-		prep_stmt->execute();
-		//m_ResultSet = stmt->executeQuery("SELECT * FROM `web_auth`;");
+		m_ResultSet = stmt->executeQuery("SELECT id, email FROM web_auth WHERE email = ?");
+	
 	}
 	catch (SQLException e)
 	{
@@ -42,16 +38,46 @@ CreateAccountWebResult DBMaster::CreateAccount(const string& email, const string
 
 	//while (m_ResultSet->next())
 	//{
-	//	int32_t id = m_ResultSet->getInt(sql::SQLString("id"));
-	//	printf("id: %d\n", id);
-	//	int32_t id_bycolumn = m_ResultSet->getInt(1);
-	//	printf("id_bycolumn(1): %d\n", id_bycolumn);
-
-	//	SQLString email = m_ResultSet->getString("email");
-	//	printf("email: %s\n", email.c_str());
+	//	cUser* tempUser = new cUser();
+	//	//tempUser->email
+	//	std::cout << "\t... MySQL replies: ";
+	//	/* Access column data by alias or column name */
+	//	std::cout << m_ResultSet->getString("email") << std::endl;
+	//	std::cout << "\t... MySQL says it again: ";
+	//	/* Access column data by numeric offset, 1 is the first column */
+	//	std::cout << m_ResultSet->getString(2) << std::endl;
 	//}
 
-	delete prep_stmt;
+
+	//Make new account
+	newUser.salt = hasher->GenerateSalt();
+	std::string temp = newUser.salt + password;
+	newUser.hashed_password = hasher->GenerateHash(temp);
+
+	//sql::PreparedStatement* preparedStatement = m_Connection->prepareStatement("SELECT * FROM `web_auth`;");
+	sql::PreparedStatement* insert_stmt = m_Connection->prepareStatement("INSERT INTO web_auth(email, salt, hashed_password, userId) VALUES (?, ?, ?, ?)");
+	insert_stmt->setString(1, email);
+	insert_stmt->setString(2, newUser.salt);
+	insert_stmt->setString(3, newUser.hashed_password);
+	insert_stmt->setInt(4, 123);
+	//preparedStatement->setString(1, "web_auth");
+
+	
+	try
+	{
+		insert_stmt->execute();
+		//m_ResultSet = stmt->executeQuery("SELECT * FROM `web_auth`;");
+	}
+	catch (SQLException e)
+	{
+		std::cout << e.what() << std::endl;
+		printf("Failed to retrieve web_auth data!\n");
+		return CreateAccountWebResult::INTERNAL_SERVER_ERROR;
+	}
+
+
+	delete hasher;
+	delete insert_stmt;
 	printf("Successfully retrieved web_auth data!\n");
 	return CreateAccountWebResult::SUCCESS;
 }

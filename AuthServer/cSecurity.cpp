@@ -26,7 +26,7 @@ std::string cSecurity::GetSalt()
 	return this->mSalt;
 }
 
-void cSecurity::GenerateSalt()
+std::string cSecurity::GenerateSalt()
 {
 	char alphanum[] =
 		"0123456789"
@@ -40,6 +40,7 @@ void cSecurity::GenerateSalt()
 		newSalt += alphanum[rand() % (sizeof(alphanum) - 1)];
 	}
 	this->mSalt = newSalt;
+	return this->mSalt;
 }
 
 std::string cSecurity::GenerateHash(std::string plainTextPassword)

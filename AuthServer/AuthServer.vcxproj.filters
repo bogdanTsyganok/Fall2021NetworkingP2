@@ -27,6 +27,9 @@
     <ClInclude Include="cSecurity.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="cUser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DBMaster.cpp">

@@ -147,6 +147,7 @@
   <ItemGroup>
     <ClInclude Include="..\extern\bin\auth.pb.h" />
     <ClInclude Include="cSecurity.h" />
+    <ClInclude Include="cUser.h" />
     <ClInclude Include="DBMaster.h" />
     <ClInclude Include="sha256.h" />
   </ItemGroup>
