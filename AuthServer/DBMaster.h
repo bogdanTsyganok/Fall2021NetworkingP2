@@ -16,10 +16,10 @@ enum CreateAccountWebResult
 	INTERNAL_SERVER_ERROR
 };
 
-class DBHelper
+class DBMaster
 {
 public:
-	DBHelper(void);
+	DBMaster(void);
 
 	void Connect(const string& hostname, const string& username, const string& password);
 	bool IsConnected(void);

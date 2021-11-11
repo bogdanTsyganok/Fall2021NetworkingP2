@@ -1,6 +1,6 @@
 #include "DBMaster.h"
 
-DBHelper::DBHelper(void)
+DBMaster::DBMaster(void)
 	: m_IsConnected(false)
 	, m_IsConnecting(false)
 	, m_Connection(0)
@@ -9,12 +9,12 @@ DBHelper::DBHelper(void)
 {
 }
 
-bool DBHelper::IsConnected(void)
+bool DBMaster::IsConnected(void)
 {
 	return m_IsConnected;
 }
 
-CreateAccountWebResult DBHelper::CreateAccount(const string& email, const string& password)
+CreateAccountWebResult DBMaster::CreateAccount(const string& email, const string& password)
 {
 	sql::Statement* stmt = m_Connection->createStatement();
 	try
@@ -43,7 +43,7 @@ CreateAccountWebResult DBHelper::CreateAccount(const string& email, const string
 	return CreateAccountWebResult::SUCCESS;
 }
 
-void DBHelper::Connect(const string& hostname, const string& username, const string& password)
+void DBMaster::Connect(const string& hostname, const string& username, const string& password)
 {
 	if (m_IsConnecting)
 		return;
