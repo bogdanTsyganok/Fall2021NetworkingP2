@@ -17,28 +17,41 @@ bool DBMaster::IsConnected(void)
 CreateAccountWebResult DBMaster::CreateAccount(const string& email, const string& password)
 {
 	sql::Statement* stmt = m_Connection->createStatement();
+	
+	//sql::PreparedStatement* preparedStatement = m_Connection->prepareStatement("SELECT * FROM `web_auth`;");
+	sql::PreparedStatement* prep_stmt = m_Connection->prepareStatement("INSERT INTO web_auth(email, salt, hashed_password, userId) VALUES (?, ?, ?, ?)");
+	prep_stmt->setString(1, "testEmail");
+	prep_stmt->setString(2, "salt");
+	prep_stmt->setString(3, "password");
+	prep_stmt->setInt(4, 123);
+	//preparedStatement->setString(1, "web_auth");
+
+	
+
 	try
 	{
-		m_ResultSet = stmt->executeQuery("SELECT * FROM `web_auth`;");
+		prep_stmt->execute();
+		//m_ResultSet = stmt->executeQuery("SELECT * FROM `web_auth`;");
 	}
 	catch (SQLException e)
 	{
-		printf("Failed to retrieved web_auth data!\n");
+		std::cout << e.what() << std::endl;
+		printf("Failed to retrieve web_auth data!\n");
 		return CreateAccountWebResult::INTERNAL_SERVER_ERROR;
 	}
 
-	while (m_ResultSet->next())
-	{
-		int32_t id = m_ResultSet->getInt(sql::SQLString("id"));
-		printf("id: %d\n", id);
-		int32_t id_bycolumn = m_ResultSet->getInt(1);
-		printf("id_bycolumn(1): %d\n", id_bycolumn);
+	//while (m_ResultSet->next())
+	//{
+	//	int32_t id = m_ResultSet->getInt(sql::SQLString("id"));
+	//	printf("id: %d\n", id);
+	//	int32_t id_bycolumn = m_ResultSet->getInt(1);
+	//	printf("id_bycolumn(1): %d\n", id_bycolumn);
 
-		SQLString email = m_ResultSet->getString("email");
-		printf("email: %s\n", email.c_str());
-	}
+	//	SQLString email = m_ResultSet->getString("email");
+	//	printf("email: %s\n", email.c_str());
+	//}
 
-
+	delete prep_stmt;
 	printf("Successfully retrieved web_auth data!\n");
 	return CreateAccountWebResult::SUCCESS;
 }

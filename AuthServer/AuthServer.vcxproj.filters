@@ -21,6 +21,12 @@
     <ClInclude Include="..\extern\bin\auth.pb.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="sha256.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cSecurity.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DBMaster.cpp">
@@ -31,6 +37,12 @@
     </ClCompile>
     <ClCompile Include="..\extern\bin\auth.pb.cc">
       <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="sha256.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cSecurity.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
