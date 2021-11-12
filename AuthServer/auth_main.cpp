@@ -3,6 +3,7 @@
 #include "cSecurity.h"
 #include "auth.pb.h"
 DBMaster database;
+#define WIN32_LEAN_AND_MEAN
 
 #include <Windows.h>
 #include <WinSock2.h>
@@ -13,7 +14,6 @@ DBMaster database;
 #include <iostream>
 #include <cBuffer.h>
 #include <map>
-
 
 // Need to link with Ws2_32.lib
 #pragma comment (lib, "Ws2_32.lib")
@@ -63,6 +63,11 @@ void RemoveClient(int index)
 
 int main(int argc, char** argv)
 {
+	database.Connect("127.0.0.1", "root", "password");
+	std::string date;
+	int id;
+	database.AuthenticateAccount("test2@gmail.com", "somepass", date, id);
+
 	WSADATA wsaData;
 	int iResult;
 
