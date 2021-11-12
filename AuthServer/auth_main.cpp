@@ -2,7 +2,6 @@
 #include "sha256.h"
 #include "cSecurity.h"
 #include "auth.pb.h"
-
 DBMaster database;
 #define WIN32_LEAN_AND_MEAN			// Strip rarely used calls
 
@@ -16,6 +15,7 @@ DBMaster database;
 #include <cBuffer.h>
 #include <map>
 
+
 // Need to link with Ws2_32.lib
 #pragma comment (lib, "Ws2_32.lib")
 
@@ -26,26 +26,23 @@ DBMaster database;
 //Commands that will be in the header of packets
 enum Command
 {
-	Create = 5,
-	Authenticate = 6
+	Create = 101,
+	Authenticate = 102
 };
 
 // Client structure
-struct ClientInfo
-{
-	SOCKET socket;	
+struct ClientInfo {
+	SOCKET socket;
+
 	// Buffer information (this is basically you buffer class)
 	WSABUF dataBuf;
 	cBuffer buffer = cBuffer(DEFAULT_BUFLEN);
 	int bytesRECV;
-	std::string name = "Anonymous Server";
+	std::string name = "Anonymous Chat Server";
 };
 
 int TotalClients = 0;
 ClientInfo* ClientArray[FD_SETSIZE];
-typedef std::multimap<std::string, int> roommap;
-typedef std::multimap<std::string, int>::iterator roommapiterator;
-roommap rooms;
 
 void RemoveClient(int index)
 {
@@ -64,30 +61,28 @@ void RemoveClient(int index)
 	// TODO: Delete Client
 }
 
+
 int main(int argc, char** argv)
 {
-	
-	database.Connect("127.0.0.1", "root", "password");
 	WSADATA wsaData;
 	int iResult;
 
-	// Initialize Winsock
+	//Initialize Winsock
 	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != 0)
 	{
-		// Something went wrong, tell the user the error id
-		printf("WSAStartup failed with error: %d\n", iResult);
-		return 1;
+		std::cout << "WSA startup failed with error: " << iResult << std::endl;
 	}
 	else
 	{
-		printf("WSAStartup() was successful!\n");
+		std::cout << "WSA startu was successful!" << std::endl;
 	}
 
-	// #1 Socket
+	//Step 1: Sockets
 	SOCKET listenSocket = INVALID_SOCKET;
 	SOCKET acceptSocket = INVALID_SOCKET;
 
+	//Address info
 	struct addrinfo* addrResult = NULL;
 	struct addrinfo hints;
 
@@ -95,51 +90,42 @@ int main(int argc, char** argv)
 	ZeroMemory(&hints, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
+	hints.ai_protocol = IPPROTO_TCP; //Need tcp for project 2
 	hints.ai_flags = AI_PASSIVE;
 
-	// Resolve the server address and port
+	socklen_t addrlen;
+
+	//Resolve the server address and port 
 	iResult = getaddrinfo(NULL, DEFAULT_PORT, &hints, &addrResult);
 	if (iResult != 0)
 	{
-		printf("getaddrinfo() failed with error %d\n", iResult);
-		WSACleanup();
-		return 1;
+		std::cout << "Obtain address info failed with error: " << iResult << std::endl;
 	}
 	else
 	{
-		printf("getaddrinfo() is good!\n");
+		std::cout << "Address info obtained" << std::endl;
 	}
 
-	// Create a SOCKET for connecting to the server
-	listenSocket = socket(
-		addrResult->ai_family,
-		addrResult->ai_socktype,
-		addrResult->ai_protocol
-	);
+	//Create a socket for connecting to the auth server
+	listenSocket = socket(addrResult->ai_family, addrResult->ai_socktype, addrResult->ai_protocol);
 	if (listenSocket == INVALID_SOCKET)
 	{
-		// -1 -> Actual Error Code
-		// https://docs.microsoft.com/en-us/windows/win32/winsock/windows-sockets-error-codes-2
-		printf("socket() failed with error %d\n", WSAGetLastError());
+		std::cout << "Socket creation failed with error: " << WSAGetLastError() << std::endl;
+		//Abort and clean up
 		freeaddrinfo(addrResult);
 		WSACleanup();
 		return 1;
 	}
 	else
 	{
-		printf("socket() is created!\n");
+		std::cout << "Socket was created!" << std::endl;
 	}
-
-	// #2 Bind - Setup the TCP listening socket
-	iResult = bind(
-		listenSocket,
-		addrResult->ai_addr,
-		(int)addrResult->ai_addrlen
-	);
+	//Step 2: Bind, setup the tcp listening socket
+	iResult = bind(listenSocket, addrResult->ai_addr, (int)addrResult->ai_addrlen);
 	if (iResult == SOCKET_ERROR)
 	{
-		printf("bind failed with error: %d\n", WSAGetLastError());
+		std::cout << "Bind failed with error: " << WSAGetLastError() << std::endl;
+		//Abort and clean up
 		freeaddrinfo(addrResult);
 		closesocket(listenSocket);
 		WSACleanup();
@@ -147,117 +133,120 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		printf("bind() is good!\n");
+		std::cout << "Bind was successful" << std::endl;
 	}
 
-	// We don't need this anymore
+	//No longer required
 	freeaddrinfo(addrResult);
 
-	// #3 Listen
+	//Step 3: Listen
 	iResult = listen(listenSocket, SOMAXCONN);
 	if (iResult == SOCKET_ERROR)
 	{
-		printf("listen() failed with error %d\n", WSAGetLastError());
+		std::cout << "Listen failed with error: " << WSAGetLastError();
+		//Abort and clean up
 		closesocket(listenSocket);
 		WSACleanup();
 		return 1;
 	}
 	else
 	{
-		printf("listen() was successful!\n");
+		std::cout << "Listen was successful!" << std::endl;
 	}
 
-	// Change the socket mode on the listening socket from blocking to
-	// non-blocking so the application will not block waiting for requests
-	DWORD NonBlock = 1;
-	iResult = ioctlsocket(listenSocket, FIONBIO, &NonBlock);
+	//Set non-blocking
+	DWORD nonBlock = 1;
+	iResult = ioctlsocket(listenSocket, FIONBIO, &nonBlock);
 	if (iResult == SOCKET_ERROR)
 	{
-		printf("ioctlsocket() failed with error %d\n", WSAGetLastError());
+		std::cout << "Failed to set non blocking with error: " << WSAGetLastError() << std::endl;
+		//Abort and clean up
 		closesocket(listenSocket);
 		WSACleanup();
 		return 1;
 	}
-	printf("ioctlsocket() was successful!\n");
+	else
+	{
+		std::cout << "Set socket to non blocking!" << std::endl;
+	}
 
-	FD_SET ReadSet;
+	//Enter listening loop
+	FD_SET readSet;
 	int total;
 	DWORD flags;
-	DWORD RecvBytes;
-	DWORD SentBytes = 0;
+	DWORD recvBytes;
+	DWORD sentBytes = 0;
+	bool listening = true;
 
-	printf("Entering accept/recv/send loop...\n");
-	while (true)
+	std::cout << "Entering loop to accept/receive/send" << std::endl;
+	while (listening)
 	{
 		timeval tv = { 0 };
 		tv.tv_sec = 2;
 		// Initialize our read set
-		FD_ZERO(&ReadSet);
+		FD_ZERO(&readSet);
 
 		// Always look for connection attempts
-		FD_SET(listenSocket, &ReadSet);
+		FD_SET(listenSocket, &readSet);
 
 		// Set read notification for each socket.
 		for (int i = 0; i < TotalClients; i++)
 		{
-			FD_SET(ClientArray[i]->socket, &ReadSet);
+			FD_SET(ClientArray[i]->socket, &readSet);
 		}
 
-		// Call our select function to find the sockets that
-		// require our attention
-		//printf("Waiting for select()...\n");
-		total = select(0, &ReadSet, NULL, NULL, &tv);
+		//Call our select function to find the sockets that
+		//require our attention
+		std::cout << "Waiting for select..." << std::endl;
+		total = select(0, &readSet, NULL, NULL, &tv);
 		if (total == SOCKET_ERROR)
 		{
-			printf("select() failed with error: %d\n", WSAGetLastError());
+			std::cout << "Select failed with error: " << WSAGetLastError() << std::endl;
 			return 1;
 		}
 		else
 		{
-			//printf("select() is successful!\n");
+			std::cout << "Select was successful!" << std::endl;
 		}
 
-		// #4 Check for arriving connections on the listening socket
-		if (FD_ISSET(listenSocket, &ReadSet))
+		//Step 4: check for new connections on the listening socket
+		if (FD_ISSET(listenSocket, &readSet))
 		{
 			total--;
 			acceptSocket = accept(listenSocket, NULL, NULL);
 			if (acceptSocket == INVALID_SOCKET)
 			{
-				printf("accept() failed with error %d\n", WSAGetLastError());
+				std::cout << "Accept failed with error: " << WSAGetLastError() << std::endl;
 				return 1;
 			}
 			else
 			{
-				iResult = ioctlsocket(acceptSocket, FIONBIO, &NonBlock);
+				iResult = ioctlsocket(acceptSocket, FIONBIO, &nonBlock);
 				if (iResult == SOCKET_ERROR)
 				{
-					printf("ioctsocket() failed with error %d\n", WSAGetLastError());
+					std::cout << "ioctlsocket failed with error: " << WSAGetLastError() << std::endl;
 				}
 				else
 				{
-					printf("ioctlsocket() success!\n");
-
+					std::cout << "ioctlsocket was successful!" << std::endl;
 					ClientInfo* info = new ClientInfo();
 					info->socket = acceptSocket;
 					info->bytesRECV = 0;
 					ClientArray[TotalClients] = info;
 					TotalClients++;
-					printf("New client connected on socket %d\n", (int)acceptSocket);
+					std::cout << "New client connected on socket: " << (int)acceptSocket << std::endl;
 				}
 			}
 		}
 
-		// #5 recv & send
+		//Step 5: Receive and send 
 		for (int i = 0; i < TotalClients; i++)
 		{
 			ClientInfo* client = ClientArray[i];
-			client->buffer.Flush();
-			client->buffer.ResetSize(DEFAULT_BUFLEN);
 
 			// If the ReadSet is marked for this socket, then this means data
 			// is available to be read on the socket
-			if (FD_ISSET(client->socket, &ReadSet))
+			if (FD_ISSET(client->socket, &readSet))
 			{
 				total--;
 				client->dataBuf.buf = (char*)client->buffer.GetBuffer();
@@ -268,24 +257,24 @@ int main(int argc, char** argv)
 					client->socket,
 					&(client->dataBuf),
 					1,
-					&RecvBytes,
+					&recvBytes,
 					&Flags,
 					NULL,
 					NULL
 				);
 
-				//Steps to recieve a packet
-				//1. Get the header out of the buffer
+				//Steps to receive a packet
+				//1. Extract header from the buffer
 				//Packet size
 				int packetSize = client->buffer.ReadIntBE();
 				//Command type
-				int commandtype = client->buffer.ReadIntBE();
+				int commandType = client->buffer.ReadIntBE();
 
-				if (packetSize > RecvBytes)
+				if (packetSize > recvBytes)
 				{
 					client->buffer.ResetSize(packetSize);
 					client->dataBuf.len = packetSize;
-					client->dataBuf.buf = (char*)client->buffer.GetBuffer() + RecvBytes;
+					client->dataBuf.buf = (char*)client->buffer.GetBuffer() + recvBytes;
 
 
 					DWORD Flags = 0;
@@ -293,214 +282,46 @@ int main(int argc, char** argv)
 						client->socket,
 						&(client->dataBuf),
 						1,
-						&RecvBytes,
+						&recvBytes,
 						&Flags,
 						NULL,
 						NULL
 					);
 				}
-
-				std::string received;
-				std::string roomName;
-
-
+				
 				cBuffer response(DEFAULT_BUFLEN);
 				short messageLength;
 
-				//2. Get the message out of the buffer
-				switch (commandtype)
+				//Get the message out of the buffer
+				switch (commandType)
 				{
-				case 5://create
+				case 101://Create account
 				{
-					authentication::CreateAccountWeb createBuf;
-					//createBuf.set
 					break;
 				}
-				case 6: //authenticate
+				case 102:
 				{
-					//Room name
-					/*messageLength = client->buffer.ReadShortBE();
-					roomName = client->buffer.ReadStringBE(messageLength);
-					rooms.insert(std::make_pair(roomName, i));
-
-					std::string responseMessage = client->name + " has joined the room: " + roomName;
-
-					response.ResetSize(responseMessage.length() + DEFAULT_HEADERLEN);
-					response.WriteShortBE(responseMessage.length());
-					response.WriteStringBE(responseMessage);
-
-					response.AddHeader(commandtype);*/
-
 					break;
 				}
 				default:
 					break;
 				}
-
-				client->buffer.Flush();
-
-				//2. Get the message out of the buffer
-				/*short messageLength = client->buffer.ReadShortBE();
-
-				std::string received = client->buffer.ReadStringBE(messageLength);*/
-
-				//std::cout << "RECVd: " << received << std::endl;
-
-
-				WSABUF resBuf;
-
-				resBuf.buf = (char*)response.GetBuffer();
-				resBuf.len = response.GetSize();
-
-				if (iResult == SOCKET_ERROR)
-				{
-					if (WSAGetLastError() == WSAEWOULDBLOCK)
-					{
-						// We can ignore this, it isn't an actual error.
-					}
-					else
-					{
-						printf("WSARecv failed on socket %d with error: %d\n", (int)client->socket, WSAGetLastError());
-						RemoveClient(i);
-					}
-				}
-				else
-				{
-					//Here we'll be sending responses back to clients
-					printf("WSARecv() is OK!\n");
-					if (RecvBytes == 0)
-					{
-						RemoveClient(i);
-					}
-					else if (RecvBytes == SOCKET_ERROR)
-					{
-						printf("recv: There was an error..%d\n", WSAGetLastError());
-						continue;
-					}
-					else
-					{
-						roommapiterator it;
-						switch (commandtype)
-						{
-						case 1:
-							break;
-
-						case 2:	//Join
-						{
-							it = rooms.find(roomName);
-							// RecvBytes > 0, we got data
-
-							while (it != rooms.end())
-							{
-								if (it->first != roomName)
-									break;
-								// RecvBytes > 0, we got data
-								iResult = WSASend(
-									ClientArray[it->second]->socket,
-									&(resBuf),
-									1,
-									&SentBytes,
-									Flags,
-									NULL,
-									NULL
-								);
-								it++;
-							}
-							break;
-						}
-						case 3:	//Leave
-						{
-							it = rooms.find(roomName);
-							// RecvBytes > 0, we got data
-
-							while (it != rooms.end())
-							{
-								if (it->first != roomName)
-									break;
-								// RecvBytes > 0, we got data
-								iResult = WSASend(
-									ClientArray[it->second]->socket,
-									&(resBuf),
-									1,
-									&SentBytes,
-									Flags,
-									NULL,
-									NULL
-								);
-								it++;
-							}
-							break;
-						}
-						case 4: //send message
-
-							it = rooms.find(roomName);
-
-							if (it != rooms.end())
-							{
-								while (it != rooms.end())
-								{
-									if (it->first != roomName)
-										break;
-									if (ClientArray[it->second] != client)
-									{
-										// RecvBytes > 0, we got data
-										iResult = WSASend(
-											ClientArray[it->second]->socket,
-											&(resBuf),
-											1,
-											&SentBytes,
-											Flags,
-											NULL,
-											NULL
-										);
-									}
-									it++;
-								}
-							}
-							if (SentBytes == SOCKET_ERROR)
-							{
-								printf("send error %d\n", WSAGetLastError());
-							}
-							else if (SentBytes == 0)
-							{
-								printf("Send result is 0\n");
-							}
-							else
-							{
-								printf("Successfully sent %d bytes!\n", SentBytes);
-							}
-							break;
-						default:
-							break;
-						}
-					}
-
-					// Example using send instead of WSASend...
-					//int iSendResult = send(client->socket, client->dataBuf.buf, iResult, 0);
-
-
-				}
 			}
 		}
-
 	}
 
-
-
-	// #6 close
+	//Step 6: close and cleanup
 	iResult = shutdown(acceptSocket, SD_SEND);
-	if (iResult == SOCKET_ERROR)
-	{
-		printf("shutdown failed with error: %d\n", WSAGetLastError());
+	if (iResult == SOCKET_ERROR) {
+		std::cout << "shutdown failed with error: " << WSAGetLastError() << std::endl;
 		closesocket(acceptSocket);
 		WSACleanup();
 		return 1;
 	}
 
-	// cleanup
-	closesocket(acceptSocket);
-	WSACleanup();
-
-	return 0;
+	//DB Stuff
+	//database.Connect("127.0.0.1", "root", "password");
+	//database.CreateAccount("test@gmail.com", "password");
+	//system("Pause");
 	return 0;
 }
