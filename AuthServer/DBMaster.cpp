@@ -26,7 +26,7 @@ CreateAccountWebResult DBMaster::CreateAccount(const string& email, const string
 	//Check if email is already in use 
 	try
 	{
-		m_ResultSet = stmt->executeQuery("SELECT id, email FROM web_auth WHERE email = ?");
+		//m_ResultSet = stmt->executeQuery("SELECT id, email FROM web_auth WHERE email = ?");
 	
 	}
 	catch (SQLException e)
