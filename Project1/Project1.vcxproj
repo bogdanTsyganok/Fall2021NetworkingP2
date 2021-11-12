@@ -148,16 +148,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\extern\bin\auth.pb.cc" />
     <ClCompile Include="select_server_main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\StaticBufferLibrary\StaticBufferLibrary.vcxproj">
       <Project>{918827ba-729c-4aca-bd58-1656a970fda8}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\extern\bin\auth.pb.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

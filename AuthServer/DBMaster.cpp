@@ -22,18 +22,29 @@ CreateAccountWebResult DBMaster::CreateAccount(const string& email, const string
 	sql::Statement* stmt = m_Connection->createStatement();
 	cUser newUser;
 	//sql::PreparedStatement* retrieve_stmt = m_Connection->prepareStatement("SELECT email, salt, hashed_password, userId FROM web_auth VALUES (?, ?, ?, ?)");
-
 	//Check if email is already in use 
+	
 	try
 	{
-		//m_ResultSet = stmt->executeQuery("SELECT id, email FROM web_auth WHERE email = ?");
-	
+		std::string selectQuery = "SELECT id, email FROM web_auth WHERE email = '" + email + "'";
+		m_ResultSet = stmt->executeQuery(selectQuery);
+
 	}
 	catch (SQLException e)
 	{
 		std::cout << e.what() << std::endl;
 		printf("Failed to retrieve web_auth data!\n");
 		return CreateAccountWebResult::INTERNAL_SERVER_ERROR;
+	}
+
+	if (m_ResultSet->rowsCount() > 0)
+	{
+		delete hasher;
+		delete stmt;
+		return ACCOUNT_ALREADY_EXISTS;
+	}
+	else
+	{
 	}
 
 	//while (m_ResultSet->next())
@@ -53,16 +64,32 @@ CreateAccountWebResult DBMaster::CreateAccount(const string& email, const string
 	newUser.salt = hasher->GenerateSalt();
 	std::string temp = newUser.salt + password;
 	newUser.hashed_password = hasher->GenerateHash(temp);
+	try
+	{
+		std::string insertUser = "INSERT INTO user_table(last_login, creation_date) VALUES (CURTIME(), CURDATE())";
+		stmt->execute(insertUser);
+		std::string selectLastId = "SELECT LAST_INSERT_ID() AS LastId";
+		m_ResultSet = stmt->executeQuery(selectLastId);
+	}
+	catch (SQLException e)
+	{
+		std::cout << e.what() << std::endl;
+		printf("Failed to retrieve web_auth data!\n");
+		return CreateAccountWebResult::INTERNAL_SERVER_ERROR;
+	}
+	m_ResultSet->next();
+
+	newUser.userId = m_ResultSet->getInt("LastId");
 
 	//sql::PreparedStatement* preparedStatement = m_Connection->prepareStatement("SELECT * FROM `web_auth`;");
 	sql::PreparedStatement* insert_stmt = m_Connection->prepareStatement("INSERT INTO web_auth(email, salt, hashed_password, userId) VALUES (?, ?, ?, ?)");
 	insert_stmt->setString(1, email);
 	insert_stmt->setString(2, newUser.salt);
 	insert_stmt->setString(3, newUser.hashed_password);
-	insert_stmt->setInt(4, 123);
+	insert_stmt->setInt(4, newUser.userId);
 	//preparedStatement->setString(1, "web_auth");
 
-	
+
 	try
 	{
 		insert_stmt->execute();
@@ -78,6 +105,7 @@ CreateAccountWebResult DBMaster::CreateAccount(const string& email, const string
 
 	delete hasher;
 	delete insert_stmt;
+	delete stmt;
 	printf("Successfully retrieved web_auth data!\n");
 	return CreateAccountWebResult::SUCCESS;
 }

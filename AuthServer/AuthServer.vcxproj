@@ -145,14 +145,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\extern\bin\auth.pb.h" />
     <ClInclude Include="cSecurity.h" />
     <ClInclude Include="cUser.h" />
     <ClInclude Include="DBMaster.h" />
     <ClInclude Include="sha256.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\extern\bin\auth.pb.cc" />
     <ClCompile Include="auth_main.cpp" />
     <ClCompile Include="cSecurity.cpp" />
     <ClCompile Include="DBMaster.cpp" />
