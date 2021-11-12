@@ -197,7 +197,7 @@ int main(int argc, char** argv)
 
 		//Call our select function to find the sockets that
 		//require our attention
-		std::cout << "Waiting for select..." << std::endl;
+		//std::cout << "Waiting for select..." << std::endl;
 		total = select(0, &readSet, NULL, NULL, &tv);
 		if (total == SOCKET_ERROR)
 		{
@@ -206,7 +206,7 @@ int main(int argc, char** argv)
 		}
 		else
 		{
-			std::cout << "Select was successful!" << std::endl;
+			//std::cout << "Select was successful!" << std::endl;
 		}
 
 		//Step 4: check for new connections on the listening socket
@@ -297,9 +297,10 @@ int main(int argc, char** argv)
 				{
 				case 101://Create account
 				{
+					std::cout << "Message working" << std::endl;
 					break;
 				}
-				case 102:
+				case 102://Authenticate 
 				{
 					break;
 				}

@@ -26,7 +26,10 @@
 
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27015"
+#define AUTH_PORT "27016"
 #define DEFAULT_HEADERLEN 8
+#define AUTH_SERVER "127.0.0.1"						// The IP of our server
+
 
 //Commands that will be in the header of packets
 enum Command
@@ -34,7 +37,9 @@ enum Command
 	Name = 1,
 	Join = 2,
 	Leave = 3,
-	Message = 4
+	Message = 4,
+	Create = 101,
+	Authenticate = 102
 };
 
 // Client structure
@@ -53,6 +58,8 @@ ClientInfo* ClientArray[FD_SETSIZE];
 typedef std::multimap<std::string, int> roommap;
 typedef std::multimap<std::string, int>::iterator roommapiterator;
 roommap rooms;
+
+void CreatePacket(cBuffer* buffer, Command type, std::vector< std::string> message);
 
 void RemoveClient(int index)
 {
@@ -93,8 +100,26 @@ int main(int argc, char** argv)
 	SOCKET listenSocket = INVALID_SOCKET;
 	SOCKET acceptSocket = INVALID_SOCKET;
 
+	//Connection socket to auth server
+	SOCKET connectSocket = INVALID_SOCKET;		// Our connection socket used to connect to the server
+
+	struct addrinfo* auth_infoResult = NULL;			// Holds the address information of our server
+	struct addrinfo* auth_ptr = NULL;
+	struct addrinfo auth_hints;
+
+	cBuffer auth_recvbuf(DEFAULT_BUFLEN);
+	int auth_recvbuflen = DEFAULT_BUFLEN;			// The length of the buffer we receive from the server
+
+
+	//For clients
 	struct addrinfo* addrResult = NULL;
 	struct addrinfo hints;
+
+	//Auth hints
+	ZeroMemory(&auth_hints, sizeof(auth_hints));
+	auth_hints.ai_family = AF_UNSPEC;
+	auth_hints.ai_socktype = SOCK_STREAM;
+	auth_hints.ai_protocol = IPPROTO_TCP;
 
 	// Define our connection address info 
 	ZeroMemory(&hints, sizeof(hints));
@@ -102,6 +127,68 @@ int main(int argc, char** argv)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_PASSIVE;
+
+	//Auth Step #2 Resolve the server address and port
+	iResult = getaddrinfo(AUTH_SERVER, AUTH_PORT, &hints, &auth_infoResult);
+	if (iResult != 0)
+	{
+		printf("getaddrinfo failed with error: %d\n", iResult);
+		WSACleanup();
+		return 1;
+	}
+
+	//Auth Step #3 Attempt to connect to an address until one succeeds
+	for (auth_ptr = auth_infoResult; auth_ptr != NULL; auth_ptr = auth_ptr->ai_next)
+	{
+		// Create a SOCKET for connecting to server
+		connectSocket = socket(auth_ptr->ai_family, auth_ptr->ai_socktype, auth_ptr->ai_protocol);
+
+		if (connectSocket == INVALID_SOCKET)
+		{
+			printf("socket failed with error: %ld\n", WSAGetLastError());
+			WSACleanup();
+			return 1;
+		}
+
+		// Connect to server.
+		iResult = connect(connectSocket, auth_ptr->ai_addr, (int)auth_ptr->ai_addrlen);
+		DWORD NonBlock = 1;
+		iResult = ioctlsocket(connectSocket, FIONBIO, &NonBlock);
+		if (iResult == SOCKET_ERROR)
+		{
+			closesocket(connectSocket);
+			connectSocket = INVALID_SOCKET;
+			continue;
+		}
+		break;
+	}
+
+	freeaddrinfo(auth_infoResult);
+
+	// Step #4 Send the message to the server
+	cBuffer* buffer = new cBuffer(DEFAULT_BUFLEN);
+	std::vector<std::string> messageVec;
+	messageVec.push_back("Hi");
+	CreatePacket(buffer, Command::Create, messageVec);
+	iResult = send(connectSocket, (char*)buffer->GetBuffer(), buffer->GetSize(), 0);
+	if (iResult == SOCKET_ERROR)
+	{
+		printf("send failed with error: %d\n", WSAGetLastError());
+		closesocket(connectSocket);
+		WSACleanup();
+		return 1;
+	}
+
+	if (connectSocket == INVALID_SOCKET)
+	{
+		printf("Unable to connect to server!\n");
+		WSACleanup();
+		return 1;
+	}
+	else
+	{
+		std::cout << "connected to auth server!" << std::endl;
+	}
 
 	// Resolve the server address and port
 	iResult = getaddrinfo(NULL, DEFAULT_PORT, &hints, &addrResult);
@@ -548,9 +635,45 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
+	//Auth step #5 cleanup
+	iResult = shutdown(connectSocket, SD_SEND);
+	if (iResult == SOCKET_ERROR)
+	{
+		printf("shutdown failed with error: %d\n", WSAGetLastError());
+		closesocket(connectSocket);
+		WSACleanup();
+		return 1;
+	}
+
 	// cleanup
+	closesocket(connectSocket);
 	closesocket(acceptSocket);
 	WSACleanup();
 
 	return 0;
+}
+
+
+
+/// <summary>
+/// Takes type of commands and list of messages, creates a packet that will be fed into the buffer for serialization
+/// </summary>
+/// <param name="buffer"></param>
+/// <param name="type"></param>
+/// <param name="message"></param>
+void CreatePacket(cBuffer* buffer, Command type, std::vector< std::string> message)
+{
+	for (std::string m : message)
+	{
+		//Steps to send a packet
+		//1. Determine length of message and put in the buffer
+		buffer->WriteShortBE(m.length());
+
+		//2. Put message in the buffer
+		buffer->WriteStringBE(m);
+	}
+
+	//3. Add header to the packet
+	buffer->AddHeader((int)type);
+	//Packet is ready to be sent
 }
