@@ -13,6 +13,7 @@ enum CreateAccountWebResult
 	SUCCESS,
 	ACCOUNT_ALREADY_EXISTS,
 	INVALID_PASSWORD,
+	INVALID_CREDENTIALS,
 	INTERNAL_SERVER_ERROR
 };
 
@@ -28,8 +29,9 @@ public:
 	// UPDATE = and sql::Statement::executeUpdate()
 	// INSERT = sql::Statement::execute()
 
-	CreateAccountWebResult CreateAccount(const string& email, const string& password);
+	CreateAccountWebResult CreateAccount(const string& email, const string& password, string& date, int& userId);
 
+	CreateAccountWebResult AuthenticateAccount(const string& email, const string& password, string& date, int& userId);
 private:
 	mysql::MySQL_Driver* m_Driver;
 	Connection* m_Connection;
