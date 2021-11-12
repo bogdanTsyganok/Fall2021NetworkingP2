@@ -158,6 +158,11 @@
     <ClCompile Include="DBMaster.cpp" />
     <ClCompile Include="sha256.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\StaticBufferLibrary\StaticBufferLibrary.vcxproj">
+      <Project>{918827ba-729c-4aca-bd58-1656a970fda8}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
