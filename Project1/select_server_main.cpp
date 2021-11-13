@@ -726,7 +726,7 @@ int main(int argc, char** argv)
 				recv(connectSocket, (char*)recvbuf.GetBuffer() + recvbuf.GetSize(), packetSize - recvbuf.GetSize(), 0);
 			}
 			cBuffer responseBuffer(DEFAULT_BUFLEN);
-			int reqId;
+			int reqId = -1;
 			//2. Get the message out of the buffer
 			switch (commandtype)
 			{
@@ -798,11 +798,11 @@ int main(int argc, char** argv)
 					std::string reason;
 					if (proto.reason() == authentication::AuthenticateWebFail_Reason::AuthenticateWebFail_Reason_INTERNAL_SERVER_ERROR)
 					{
-						reason = "Account Already Exists";
+						reason = "504: Internal Server Error";
 					}
 					else if (proto.reason() == authentication::AuthenticateWebFail_Reason::AuthenticateWebFail_Reason_INVALID_CREDENTIALS)
 					{
-						reason = "504: Internal Server Error";
+						reason = "Invalid Credentials";
 					}
 					serverResponse += "reason: " + reason;
 					responseBuffer.WriteShortBE(serverResponse.size());
@@ -817,18 +817,23 @@ int main(int argc, char** argv)
 			resBuf.buf = (char*)responseBuffer.GetBuffer();
 			resBuf.len = responseBuffer.GetSize();
 
-
-			DWORD Flags = 0;
-			iResult = WSASend(
-				ClientArray[reqId]->socket,
-				&(resBuf),
-				1,
-				&SentBytes,
-				Flags,
-				NULL,
-				NULL
-			);
-
+			if (reqId == -1)
+			{
+				std::cout << "Error, id not set" << std::endl;
+			}
+			else
+			{
+				DWORD Flags = 0;
+				iResult = WSASend(
+					ClientArray[reqId]->socket,
+					&(resBuf),
+					1,
+					&SentBytes,
+					Flags,
+					NULL,
+					NULL
+				);
+			}
 		}
 
 	}

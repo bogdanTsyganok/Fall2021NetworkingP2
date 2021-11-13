@@ -248,9 +248,11 @@ int main(int argc, char** argv)
 
 			// If the ReadSet is marked for this socket, then this means data
 			// is available to be read on the socket
+			client->buffer.Flush();
 			client->buffer.ResetSize(DEFAULT_BUFLEN);
 			if (FD_ISSET(client->socket, &readSet))
 			{
+				bool shouldSendMsg = false;
 				total--;
 				client->dataBuf.buf = (char*)client->buffer.GetBuffer();
 				client->dataBuf.len = DEFAULT_BUFLEN;
@@ -273,6 +275,11 @@ int main(int argc, char** argv)
 				//Command type
 				int commandType = client->buffer.ReadIntBE();
 
+				if (packetSize > 0)
+				{
+					shouldSendMsg = true;
+				}
+
 				if (packetSize > recvBytes)
 				{
 					client->buffer.ResetSize(packetSize);
@@ -291,9 +298,11 @@ int main(int argc, char** argv)
 						NULL
 					);
 				}
+
 				short messageLength;
 				std::string serializedResponse = ""; 
 				cBuffer responseBuffer(DEFAULT_BUFLEN);
+
 				//Get the message out of the buffer
 				switch (commandType)
 				{
@@ -413,6 +422,7 @@ int main(int argc, char** argv)
 					break;
 				}//end of switch
 
+				client->buffer.Flush();
 				
 
 				responseBuffer.GetBuffer();
@@ -446,14 +456,17 @@ int main(int argc, char** argv)
 					else
 					{
 						//Actual response
-
-						int result = send(client->socket, (char*)responseBuffer.GetBuffer(), responseBuffer.GetSize(), 0);
-						if (result == SOCKET_ERROR)
+						if (shouldSendMsg)
 						{
-							printf("send failed with error: %d\n", WSAGetLastError());
-							closesocket(client->socket);
-							WSACleanup();
-							return 1;
+							int result = send(client->socket, (char*)responseBuffer.GetBuffer(), responseBuffer.GetSize(), 0);
+							responseBuffer.Flush();
+							if (result == SOCKET_ERROR)
+							{
+								printf("send failed with error: %d\n", WSAGetLastError());
+								closesocket(client->socket);
+								WSACleanup();
+								return 1;
+							}
 						}
 					}
 				}

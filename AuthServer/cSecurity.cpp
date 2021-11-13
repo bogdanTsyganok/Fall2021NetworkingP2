@@ -45,15 +45,15 @@ std::string cSecurity::GenerateSalt()
 	return this->mSalt;
 }
 
-std::string cSecurity::GenerateHash(std::string plainTextPassword)
+std::string cSecurity::GenerateHash(std::string saltedPassword)
 {
-	if (this->mSalt == "")
+	/*if (this->mSalt == "")
 	{
 		GenerateSalt();
 	}
+	std::string temp = mSalt + plainTextPassword;*/
 	SHA256 sha256;
-	std::string temp = mSalt + plainTextPassword;
-	return sha256(temp);
+	return sha256(saltedPassword);
 }
 
 void cSecurity::Reset()

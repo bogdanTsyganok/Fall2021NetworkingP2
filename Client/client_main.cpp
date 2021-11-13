@@ -353,9 +353,10 @@ int main(int argc, char **argv)
 					sendMsg = false;
 					continue;
 				}
+				msg.clear();
 			}
 
-
+			msg.clear();
 			// Step #4 Send the message to the server
 			result = send(connectSocket, (char*)buffer->GetBuffer(), buffer->GetSize(), 0);
 			if (result == SOCKET_ERROR)
