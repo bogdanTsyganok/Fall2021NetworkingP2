@@ -248,6 +248,7 @@ int main(int argc, char** argv)
 
 			// If the ReadSet is marked for this socket, then this means data
 			// is available to be read on the socket
+			client->buffer.ResetSize(DEFAULT_BUFLEN);
 			if (FD_ISSET(client->socket, &readSet))
 			{
 				total--;
@@ -290,16 +291,15 @@ int main(int argc, char** argv)
 						NULL
 					);
 				}
-
-				cBuffer response(DEFAULT_BUFLEN);
 				short messageLength;
-				std::string serializedResponse = "";
+				std::string serializedResponse = ""; 
+				cBuffer responseBuffer(DEFAULT_BUFLEN);
 				//Get the message out of the buffer
 				switch (commandType)
 				{
 				case 101://Create account
 				{
-					int protobufsize = client->buffer.ReadIntBE();
+					int protobufsize = client->buffer.ReadShortBE();
 					std::string rawproto = client->buffer.ReadStringBE(protobufsize);
 
 					authentication::CreateAccountWeb createinfo;
@@ -332,7 +332,7 @@ int main(int argc, char** argv)
 						}
 						response.set_reason(reason);
 						serializedResponse = response.SerializeAsString();
-						cBuffer responseBuffer(DEFAULT_BUFLEN);
+
 						responseBuffer.WriteShortBE(serializedResponse.size());
 						responseBuffer.WriteStringBE(serializedResponse);
 
@@ -344,7 +344,7 @@ int main(int argc, char** argv)
 						response.set_reqid(createinfo.reqid());
 						response.set_userid(id);
 						serializedResponse = response.SerializeAsString();
-						cBuffer responseBuffer(DEFAULT_BUFLEN);
+
 						responseBuffer.WriteShortBE(serializedResponse.size());
 						responseBuffer.WriteStringBE(serializedResponse);
 
@@ -355,7 +355,7 @@ int main(int argc, char** argv)
 				}
 				case 102://Authenticate 
 				{
-					int protobufsize = client->buffer.ReadIntBE();
+					int protobufsize = client->buffer.ReadShortBE();
 					std::string rawproto = client->buffer.ReadStringBE(protobufsize);
 
 					authentication::AuthenticateWeb clientinfo;
@@ -387,7 +387,7 @@ int main(int argc, char** argv)
 						}
 						response.set_reason(reason);
 						serializedResponse = response.SerializeAsString();
-						cBuffer responseBuffer(DEFAULT_BUFLEN);
+
 						responseBuffer.WriteShortBE(serializedResponse.size());
 						responseBuffer.WriteStringBE(serializedResponse);
 
@@ -400,7 +400,7 @@ int main(int argc, char** argv)
 						response.set_userid(id);
 						response.set_creationdate(date);
 						serializedResponse = response.SerializeAsString();
-						cBuffer responseBuffer(DEFAULT_BUFLEN);
+						
 						responseBuffer.WriteShortBE(serializedResponse.size());
 						responseBuffer.WriteStringBE(serializedResponse);
 
@@ -413,10 +413,10 @@ int main(int argc, char** argv)
 					break;
 				}//end of switch
 
-				WSABUF resBuf;
+				
 
-				resBuf.buf = (char*)response.GetBuffer();
-				resBuf.len = response.GetSize();
+				responseBuffer.GetBuffer();
+				responseBuffer.GetSize();
 
 				if (iResult == SOCKET_ERROR)
 				{
@@ -447,33 +447,34 @@ int main(int argc, char** argv)
 					{
 						//Actual response
 
-						iResult = WSASend(
-							ClientArray[i]->socket,
-							&(resBuf),
-							1,
-							&sentBytes,
-							Flags,
-							NULL,
-							NULL
-						);
+						int result = send(client->socket, (char*)responseBuffer.GetBuffer(), responseBuffer.GetSize(), 0);
+						if (result == SOCKET_ERROR)
+						{
+							printf("send failed with error: %d\n", WSAGetLastError());
+							closesocket(client->socket);
+							WSACleanup();
+							return 1;
+						}
 					}
 				}
 			}
 		}
-
-		//Step 6: close and cleanup
-		iResult = shutdown(acceptSocket, SD_SEND);
-		if (iResult == SOCKET_ERROR) {
-			std::cout << "shutdown failed with error: " << WSAGetLastError() << std::endl;
-			closesocket(acceptSocket);
-			WSACleanup();
-			return 1;
-		}
-
-		//DB Stuff
-		//database.Connect("127.0.0.1", "root", "password");
-		//database.CreateAccount("test@gmail.com", "password");
-		//system("Pause");
-		return 0;
 	}
+
+
+	//Step 6: close and cleanup
+	iResult = shutdown(acceptSocket, SD_SEND);
+	if (iResult == SOCKET_ERROR)
+	{
+		std::cout << "shutdown failed with error: " << WSAGetLastError() << std::endl;
+		closesocket(acceptSocket);
+		WSACleanup();
+		return 1;
+	}
+
+	//DB Stuff
+	//database.Connect("127.0.0.1", "root", "password");
+	//database.CreateAccount("test@gmail.com", "password");
+	//system("Pause");
+	return 0;
 }

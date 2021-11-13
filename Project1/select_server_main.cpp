@@ -181,16 +181,7 @@ int main(int argc, char** argv)
 		return 1;
 	}*/
 
-	if (connectSocket == INVALID_SOCKET)
-	{
-		printf("Unable to connect to server!\n");
-		WSACleanup();
-		return 1;
-	}
-	else
-	{
-		std::cout << "connected to auth server!" << std::endl;
-	}
+	
 
 	////Server acting as a server part
 	// Resolve the server address and port
@@ -706,6 +697,16 @@ int main(int argc, char** argv)
 
 		cBuffer recvbuf(DEFAULT_BUFLEN);
 
+		if (connectSocket == INVALID_SOCKET)
+		{
+			printf("Unable to connect to server!\n");
+			WSACleanup();
+			return 1;
+		}
+		else
+		{
+			std::cout << "connected to auth server!" << std::endl;
+		}
 		int result = recv(connectSocket, (char*)recvbuf.GetBuffer(), recvbuf.GetSize(), 0);
 
 		if (result > 0)

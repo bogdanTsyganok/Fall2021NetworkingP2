@@ -11,6 +11,7 @@
 #include <string>
 #include "cSecurity.h"
 #include "sha256.h"
+#include <time.h>
 
 cSecurity::cSecurity()
 {
@@ -35,6 +36,7 @@ std::string cSecurity::GenerateSalt()
 		"`~,<.>/?;:'\"[{]}-_=+\\|/*";
 	std::string newSalt;
 	newSalt.reserve(64);
+	srand(time(NULL));
 	for (int i = 0; i < 64; i++)
 	{
 		newSalt += alphanum[rand() % (sizeof(alphanum) - 1)];
