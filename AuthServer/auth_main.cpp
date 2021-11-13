@@ -1,3 +1,14 @@
+/*
+* Author:		Jarrid Steeper 0883583, Bogdan Tsyganok 0886354
+* Class:		INFO6016 Network Programming
+* Teacher:		Lukas Gustafson
+* Project:		Project02
+* Due Date:		Nov 12
+* Filename:		auth_main.cpp
+* Purpose:		Server for chat applications, can create accounts that are stored in a database or
+				authenticate login attempts
+*/
+
 #include "DBMaster.h"
 #include "sha256.h"
 #include "cSecurity.h"
@@ -26,7 +37,7 @@ DBMaster database;
 //Commands that will be in the header of packets
 enum Command
 {
-	Create = 101,
+	Register = 101,
 	Authenticate = 102
 };
 

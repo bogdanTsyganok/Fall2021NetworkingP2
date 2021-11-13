@@ -2,8 +2,8 @@
 * Author:		Jarrid Steeper 0883583, Bogdan Tsyganok 0886354
 * Class:		INFO6016 Network Programming
 * Teacher:		Lukas Gustafson
-* Project:		Project01
-* Due Date:		Oct 22
+* Project:		Project02
+* Due Date:		Nov 12
 * Filename:		select_server_main.cpp
 * Purpose:		Server for chat applications, can host rooms, maintain connections with and 
 				receive/send messages from multiple clients and act on those messages.
@@ -40,7 +40,7 @@ enum Command
 	Join = 2,
 	Leave = 3,
 	Message = 4,
-	Create = 101,
+	Register = 101,
 	Authenticate = 102
 };
 

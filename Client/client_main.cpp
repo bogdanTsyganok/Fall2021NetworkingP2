@@ -2,8 +2,8 @@
 * Author:		Jarrid Steeper 0883583, Bogdan Tsyganok 0886354
 * Class:		INFO6016 Network Programming
 * Teacher:		Lukas Gustafson
-* Project:		Project01
-* Due Date:		Oct 22
+* Project:		Project02
+* Due Date:		Nov 12
 * Filename:		client_main.cpp
 * Purpose:		Client for chat applications, can connect to and send messages to a server.
 */
@@ -35,7 +35,7 @@ enum class Command
 	Join = 2,
 	Leave = 3,
 	Message = 4,
-	Create = 101,
+	Register = 101,
 	Authenticate = 102
 };
 
@@ -298,7 +298,7 @@ int main(int argc, char **argv)
 						messageVec.push_back(password);
 
 						//std::cout << msg << std::endl;
-						CreatePacket(buffer, Command::Create, messageVec);
+						CreatePacket(buffer, Command::Register, messageVec);
 						messageVec.clear();
 						msg.clear();
 					}
