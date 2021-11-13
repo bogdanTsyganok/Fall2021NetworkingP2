@@ -34,7 +34,9 @@ enum class Command
 	Name = 1,
 	Join = 2,
 	Leave = 3,
-	Message = 4
+	Message = 4,
+	Create = 101,
+	Authenticate = 102
 };
 
 struct ClientInfo {
@@ -62,6 +64,7 @@ int main(int argc, char **argv)
 	cBuffer recvbuf(DEFAULT_BUFLEN);
 	int result;									// code of the result of any command we use
 	int recvbuflen = DEFAULT_BUFLEN;			// The length of the buffer we receive from the server
+	bool isLoggedIn = false;
 
 	// Step #1 Initialize Winsock
 	result = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -160,110 +163,198 @@ int main(int argc, char **argv)
 			cBuffer* buffer = new cBuffer(DEFAULT_BUFLEN);
 			std::vector<std::string> messageVec;
 			//Check start of user input for the command
-			//Set Name
-			if (msg.rfind("/name", 0) == 0)
+			if (isLoggedIn == true)
 			{
-				msg.erase(0, 6);
-
-				//Set locally
-				gClient->clientName = msg;
-				
-				//Send new name to server
-				messageVec.push_back(msg);
-				CreatePacket(buffer, Command::Name, messageVec);
-
-				messageVec.clear();
-				msg.clear();
-			}
-			//Join room
-			else if (msg.rfind("/join ", 0) == 0)
-			{
-				msg.erase(0, 6);
-				messageVec.push_back(msg);
-				gClient->roomList.push_back(msg);
-				CreatePacket(buffer, Command::Join, messageVec);
-				messageVec.clear();
-				msg.clear();
-			}
-			//Leave room
-			else if (msg.rfind("/leave ", 0) == 0)
-			{
-				//Clear command from the string
-				msg.erase(0, 7);
-				messageVec.push_back(msg);
-				
-				std::string roomName;
-				for (int i = 0; i < gClient->roomList.size(); i++)
+				//Set Name
+				if (msg.rfind("/name", 0) == 0)
 				{
-					roomName = gClient->roomList.at(i);
-					if (roomName == msg)
-					{
-						gClient->roomList.erase(gClient->roomList.begin() + i);
+					msg.erase(0, 6);
 
+					//Set locally
+					gClient->clientName = msg;
+
+					//Send new name to server
+					messageVec.push_back(msg);
+					CreatePacket(buffer, Command::Name, messageVec);
+
+					messageVec.clear();
+					msg.clear();
+				}
+				//Join room
+				else if (msg.rfind("/join ", 0) == 0)
+				{
+					msg.erase(0, 6);
+					messageVec.push_back(msg);
+					gClient->roomList.push_back(msg);
+					CreatePacket(buffer, Command::Join, messageVec);
+					messageVec.clear();
+					msg.clear();
+				}
+				//Leave room
+				else if (msg.rfind("/leave ", 0) == 0)
+				{
+					//Clear command from the string
+					msg.erase(0, 7);
+					messageVec.push_back(msg);
+
+					std::string roomName;
+					for (int i = 0; i < gClient->roomList.size(); i++)
+					{
+						roomName = gClient->roomList.at(i);
+						if (roomName == msg)
+						{
+							gClient->roomList.erase(gClient->roomList.begin() + i);
+
+						}
+					}
+
+					CreatePacket(buffer, Command::Leave, messageVec);
+					messageVec.clear();
+					msg.clear();
+				}
+				//Send message to a room
+				else if (msg.rfind("/message ", 0) == 0)
+				{
+					msg.erase(0, 9);
+
+					size_t roomIndex = msg.find('[');
+					size_t roomEnd = msg.find(']');
+					if (roomIndex != std::string::npos)
+					{
+						std::string roomName = msg.substr(roomIndex + 1, roomEnd - 1);
+						msg.erase(roomIndex, roomEnd + 2);
+						messageVec.push_back(roomName);
+					}
+
+
+					messageVec.push_back(msg);
+					CreatePacket(buffer, Command::Message, messageVec);
+					messageVec.clear();
+					msg.clear();
+				}
+				//Display help
+				else if (msg.rfind("/help", 0) == 0)
+				{
+					std::cout << "Commands:" << std::endl;
+					std::cout << "/name \"New Name\" :\t\t\tSet new display name (no quotation marks)" << std::endl
+						<< "/join \"Room Name\" :\t\t\tJoin a room or create it if the name isn't in use (no quotation marks)" << std::endl
+						<< "/leave \"Room Name\" :\t\t\tLeave a room (no quotation marks)" << std::endl
+						<< "/message [Room Name] \"Message\" :\tSend a message to a room (Square brackets around room name required, quotations are not)" << std::endl
+						<< "/help :\t\t\t\t\tRe-display this help text" << std::endl;
+					msg.clear();
+					sendMsg = false;
+					continue;
+				}
+				//Display info
+				else if (msg.rfind("/info", 0) == 0)
+				{
+					std::cout << "Information:" << std::endl;
+					std::cout << "Username: " << gClient->clientName << std::endl;
+					std::cout << "Rooms: " << std::endl;
+					for (std::string room : gClient->roomList)
+					{
+						std::cout << room << std::endl;
+					}
+					msg.clear();
+					sendMsg = false;
+					continue;
+				}
+				//Invalid input
+				else
+				{
+					std::cout << "Invalid input please use input:" << std::endl;
+					std::cout << "/name" << std::endl << "/join" << std::endl
+						<< "/leave" << std::endl << "/message" << std::endl
+						<< "/help" << std::endl;
+					msg.clear();
+					sendMsg = false;
+					continue;
+				}
+			}
+			if (isLoggedIn == false)
+			{
+				if (msg.rfind("/register ", 0) == 0)
+				{
+					msg.erase(0, 10);
+					//Check that there is only 1 white space 
+					int count = std::count(msg.begin(), msg.end(), ' ');
+					if (count > 1)
+					{
+						std::cout << "invalid input" << std::endl;
+						msg.clear();
+						sendMsg = false;
+						continue;
+					}
+					else
+					{
+						//Find white space between email and password
+						std::size_t spaceIndex = msg.find_first_of(" ");
+
+						//Split email and password
+						std::string email = msg.substr(0, spaceIndex);
+						messageVec.push_back(email);
+
+						std::string password = msg.substr(spaceIndex, msg.size());
+						messageVec.push_back(password);
+
+						//std::cout << msg << std::endl;
+						CreatePacket(buffer, Command::Create, messageVec);
+						messageVec.clear();
+						msg.clear();
 					}
 				}
-
-				CreatePacket(buffer, Command::Leave, messageVec);
-				messageVec.clear();
-				msg.clear();
-			}
-			//Send message to a room
-			else if (msg.rfind("/message ", 0) == 0)
-			{
-				msg.erase(0, 9);
-
-				size_t roomIndex = msg.find('[');
-				size_t roomEnd = msg.find(']');
-				if (roomIndex != std::string::npos)
+				else if (msg.rfind("/login ", 0) == 0)
 				{
-					std::string roomName = msg.substr(roomIndex + 1, roomEnd -1);
-					msg.erase(roomIndex, roomEnd + 2);
-					messageVec.push_back(roomName);
+					msg.erase(0, 7);
+					//Check that there is only 1 white space 
+					int count = std::count(msg.begin(), msg.end(), ' ');
+					if (count > 1)
+					{
+						std::cout << "invalid input" << std::endl;
+						msg.clear();
+						sendMsg = false;
+						continue;
+					}
+					else
+					{
+						//Find white space between email and password
+						std::size_t spaceIndex = msg.find_first_of(" ");
+						
+						//Split email and password
+						std::string email = msg.substr(0, spaceIndex);
+						messageVec.push_back(email);
+
+						std::string password = msg.substr(spaceIndex, msg.size());
+						messageVec.push_back(password);
+
+						//std::cout << msg << std::endl;
+						CreatePacket(buffer, Command::Authenticate, messageVec);
+						messageVec.clear();
+						msg.clear();
+					}
 				}
-
-
-				messageVec.push_back(msg);
-				CreatePacket(buffer, Command::Message, messageVec);
-				messageVec.clear();
-				msg.clear();
-			}
-			//Display help
-			else if (msg.rfind("/help", 0) == 0)
-			{
-				std::cout << "Commands:" << std::endl;
-				std::cout << "/name \"New Name\" :\t\t\tSet new display name (no quotation marks)" << std::endl
-					<< "/join \"Room Name\" :\t\t\tJoin a room or create it if the name isn't in use (no quotation marks)" << std::endl
-					<< "/leave \"Room Name\" :\t\t\tLeave a room (no quotation marks)" << std::endl
-					<< "/message [Room Name] \"Message\" :\tSend a message to a room (Square brackets around room name required, quotations are not)" << std::endl
-					<< "/help :\t\t\t\t\tRe-display this help text" << std::endl;
-				msg.clear();
-				sendMsg = false;
-				continue;
-			}
-			//Display info
-			else if (msg.rfind("/info", 0) == 0)
-			{
-				std::cout << "Information:" << std::endl;
-				std::cout << "Username: " << gClient->clientName << std::endl;
-				std::cout << "Rooms: " << std::endl;
-				for (std::string room : gClient->roomList)
+				//Display help
+				else if (msg.rfind("/help", 0) == 0)
 				{
-					std::cout << room << std::endl;
+					std::cout << "Commands:" << std::endl;
+					std::cout << "/register \"Email\" \"Password\" :\t\t\Register an account withthe chat server (no quotation marks)" << std::endl
+						<< "/login \"Email\" \"Password\" :\t\t\tLogin to the chat server with an existing account(no quotation marks)" << std::endl;
+					msg.clear();
+					sendMsg = false;
+					continue;
 				}
-				msg.clear();
-				sendMsg = false;
-				continue;
+				//Invalid input
+				else
+				{
+					std::cout << "Invalid input please use input:" << std::endl;
+					std::cout << "/login" << std::endl << "/signup" << std::endl
+						<< "/help" << std::endl;
+					msg.clear();
+					sendMsg = false;
+					continue;
+				}
 			}
-			//Invalid input
-			else
-			{
-				std::cout << "Invalid input please use input:" << std::endl;
-				std::cout << "/name" << std::endl << "/join" << std::endl
-					<< "/leave" << std::endl << "/message" << std::endl;
-				msg.clear();
-				sendMsg = false;
-				continue;
-			}
+
 
 			// Step #4 Send the message to the server
 			result = send(connectSocket, (char*)buffer->GetBuffer(), buffer->GetSize(), 0);
@@ -342,6 +433,22 @@ int main(int argc, char **argv)
 
 				std::cout << "[" << roomName << "] " << senderName << ": " << message << std::endl;
 
+				break;
+			}
+			case 101:
+			{
+				break;
+			}
+			case 102:
+			{
+				break;
+			}
+			case 111:
+			{
+				break;
+			}
+			case 112:
+			{
 				break;
 			}
 			default:

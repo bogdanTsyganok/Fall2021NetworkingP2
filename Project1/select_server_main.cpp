@@ -475,13 +475,19 @@ int main(int argc, char** argv)
 
 						break;
 					}
+					//Create account
 					case 101: 
 					{
 						///Protocol header -> email -> password
 						messageLength = client->buffer.ReadShortBE();
+
+						//Email
 						std::string email = client->buffer.ReadStringBE(messageLength);
 						messageLength = client->buffer.ReadShortBE();
+						
+						//Password
 						std::string password = client->buffer.ReadStringBE(messageLength);
+						
 						authentication::CreateAccountWeb createbuffer;
 						createbuffer.set_email(email);
 						createbuffer.set_plaintextpass(password);
@@ -495,12 +501,17 @@ int main(int argc, char** argv)
 						response.AddHeader(commandtype);
 						break;
 					}
+					//Authenticate account
 					case 102:
 					{
 						///Protocol header -> email -> password
 						messageLength = client->buffer.ReadShortBE();
+
+						//Email
 						std::string email = client->buffer.ReadStringBE(messageLength);
 						messageLength = client->buffer.ReadShortBE();
+						
+						//Password
 						std::string password = client->buffer.ReadStringBE(messageLength);
 						authentication::AuthenticateWeb createbuffer;
 						createbuffer.set_email(email);
@@ -509,6 +520,7 @@ int main(int argc, char** argv)
 
 						std::string serializedprotobuf = createbuffer.SerializeAsString();
 
+						
 						response.WriteShortBE(serializedprotobuf.size());
 						response.WriteStringBE(serializedprotobuf);
 
@@ -653,6 +665,7 @@ int main(int argc, char** argv)
 								printf("Successfully sent %d bytes!\n", SentBytes);
 							}
 							break;
+						//Create
 						case 101: 
 						{
 							int result = send(connectSocket, (char*)response.GetBuffer(), response.GetSize(), 0);
@@ -665,6 +678,7 @@ int main(int argc, char** argv)
 							}
 						}
 							break;
+						//Authenticate
 						case 102:
 						{
 							int result = send(connectSocket, (char*)response.GetBuffer(), response.GetSize(), 0);

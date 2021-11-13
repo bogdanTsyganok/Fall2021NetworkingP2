@@ -290,127 +290,127 @@ int main(int argc, char** argv)
 						NULL
 					);
 				}
-				
+
 				cBuffer response(DEFAULT_BUFLEN);
 				short messageLength;
 				std::string serializedResponse = "";
 				//Get the message out of the buffer
 				switch (commandType)
 				{
-					case 101://Create account
+				case 101://Create account
+				{
+					int protobufsize = client->buffer.ReadIntBE();
+					std::string rawproto = client->buffer.ReadStringBE(protobufsize);
+
+					authentication::CreateAccountWeb createinfo;
+					if (createinfo.ParseFromString(rawproto))
 					{
-						int protobufsize = client->buffer.ReadIntBE();
-						std::string rawproto = client->buffer.ReadStringBE(protobufsize);
-					
-						authentication::CreateAccountWeb createinfo;
-						if (createinfo.ParseFromString(rawproto))
-						{
-							std::cout << "succesfully parsed proto";
-						}
-						else
-						{
-							std::cout << "could not parse proto";
-						}
-
-						std::string date;
-						int id;
-						CreateAccountWebResult dbresult = database.CreateAccount(createinfo.email(), createinfo.plaintextpass(), date, id);
-						
-						if (dbresult != SUCCESS)
-						{
-							authentication::CreateAccountWebFail response;
-							response.set_reqid(createinfo.reqid());
-							authentication::CreateAccountWebFail_Reason reason = authentication::CreateAccountWebFail_Reason::CreateAccountWebFail_Reason_INTERNAL_SERVER_ERROR;
-							switch (dbresult)
-							{
-							case INTERNAL_SERVER_ERROR:
-								reason = authentication::CreateAccountWebFail_Reason::CreateAccountWebFail_Reason_INTERNAL_SERVER_ERROR;
-								break;
-							case ACCOUNT_ALREADY_EXISTS:
-								reason = authentication::CreateAccountWebFail_Reason::CreateAccountWebFail_Reason_ACCOUNT_ALREADY_EXISTS;
-								break;
-							}
-							response.set_reason(reason);
-							serializedResponse = response.SerializeAsString();
-							cBuffer responseBuffer(DEFAULT_BUFLEN);
-							responseBuffer.WriteShortBE(serializedResponse.size());
-							responseBuffer.WriteStringBE(serializedResponse);
-
-							responseBuffer.AddHeader(commandType + 10);
-						}
-						else
-						{
-							authentication::CreateAccountWebSuccess response;
-							response.set_reqid(createinfo.reqid());
-							response.set_userid(id);
-							serializedResponse = response.SerializeAsString();
-							cBuffer responseBuffer(DEFAULT_BUFLEN);
-							responseBuffer.WriteShortBE(serializedResponse.size());
-							responseBuffer.WriteStringBE(serializedResponse);
-
-							responseBuffer.AddHeader(commandType);
-						}
-
-						break;
+						std::cout << "succesfully parsed proto";
 					}
-					case 102://Authenticate 
+					else
 					{
-						int protobufsize = client->buffer.ReadIntBE();
-						std::string rawproto = client->buffer.ReadStringBE(protobufsize);
-
-						authentication::AuthenticateWeb clientinfo;
-						if (clientinfo.ParseFromString(rawproto))
-						{
-							std::cout << "succesfully parsed proto";
-						}
-						else
-						{
-							std::cout << "could not parse proto";
-						}
-
-						std::string date;
-						int id;
-						CreateAccountWebResult dbresult = database.AuthenticateAccount(clientinfo.email(), clientinfo.plaintextpass(), date, id);
-						if (dbresult != SUCCESS)
-						{
-							authentication::AuthenticateWebFail response;
-							response.set_reqid(clientinfo.reqid());
-							authentication::AuthenticateWebFail_Reason reason = authentication::AuthenticateWebFail_Reason::AuthenticateWebFail_Reason_INTERNAL_SERVER_ERROR;
-							switch (dbresult)
-							{
-							case INTERNAL_SERVER_ERROR:
-								reason = authentication::AuthenticateWebFail_Reason::AuthenticateWebFail_Reason_INTERNAL_SERVER_ERROR;
-								break;
-							case INVALID_CREDENTIALS:
-								reason = authentication::AuthenticateWebFail_Reason::AuthenticateWebFail_Reason_INVALID_CREDENTIALS;
-								break;
-							}
-							response.set_reason(reason);
-							serializedResponse = response.SerializeAsString();
-							cBuffer responseBuffer(DEFAULT_BUFLEN);
-							responseBuffer.WriteShortBE(serializedResponse.size());
-							responseBuffer.WriteStringBE(serializedResponse);
-
-							responseBuffer.AddHeader(commandType + 10);
-						}
-						else
-						{
-							authentication::AuthenticateWebSuccess response;
-							response.set_reqid(clientinfo.reqid());
-							response.set_userid(id);
-							response.set_creationdate(date);
-							serializedResponse = response.SerializeAsString();
-							cBuffer responseBuffer(DEFAULT_BUFLEN);
-							responseBuffer.WriteShortBE(serializedResponse.size());
-							responseBuffer.WriteStringBE(serializedResponse);
-
-							responseBuffer.AddHeader(commandType);
-						}
-
-						break;
+						std::cout << "could not parse proto";
 					}
-					default:
-						break;
+
+					std::string date;
+					int id;
+					CreateAccountWebResult dbresult = database.CreateAccount(createinfo.email(), createinfo.plaintextpass(), date, id);
+
+					if (dbresult != SUCCESS)
+					{
+						authentication::CreateAccountWebFail response;
+						response.set_reqid(createinfo.reqid());
+						authentication::CreateAccountWebFail_Reason reason = authentication::CreateAccountWebFail_Reason::CreateAccountWebFail_Reason_INTERNAL_SERVER_ERROR;
+						switch (dbresult)
+						{
+						case INTERNAL_SERVER_ERROR:
+							reason = authentication::CreateAccountWebFail_Reason::CreateAccountWebFail_Reason_INTERNAL_SERVER_ERROR;
+							break;
+						case ACCOUNT_ALREADY_EXISTS:
+							reason = authentication::CreateAccountWebFail_Reason::CreateAccountWebFail_Reason_ACCOUNT_ALREADY_EXISTS;
+							break;
+						}
+						response.set_reason(reason);
+						serializedResponse = response.SerializeAsString();
+						cBuffer responseBuffer(DEFAULT_BUFLEN);
+						responseBuffer.WriteShortBE(serializedResponse.size());
+						responseBuffer.WriteStringBE(serializedResponse);
+
+						responseBuffer.AddHeader(commandType + 10);
+					}
+					else
+					{
+						authentication::CreateAccountWebSuccess response;
+						response.set_reqid(createinfo.reqid());
+						response.set_userid(id);
+						serializedResponse = response.SerializeAsString();
+						cBuffer responseBuffer(DEFAULT_BUFLEN);
+						responseBuffer.WriteShortBE(serializedResponse.size());
+						responseBuffer.WriteStringBE(serializedResponse);
+
+						responseBuffer.AddHeader(commandType);
+					}
+
+					break;
+				}
+				case 102://Authenticate 
+				{
+					int protobufsize = client->buffer.ReadIntBE();
+					std::string rawproto = client->buffer.ReadStringBE(protobufsize);
+
+					authentication::AuthenticateWeb clientinfo;
+					if (clientinfo.ParseFromString(rawproto))
+					{
+						std::cout << "succesfully parsed proto";
+					}
+					else
+					{
+						std::cout << "could not parse proto";
+					}
+
+					std::string date;
+					int id;
+					CreateAccountWebResult dbresult = database.AuthenticateAccount(clientinfo.email(), clientinfo.plaintextpass(), date, id);
+					if (dbresult != SUCCESS)
+					{
+						authentication::AuthenticateWebFail response;
+						response.set_reqid(clientinfo.reqid());
+						authentication::AuthenticateWebFail_Reason reason = authentication::AuthenticateWebFail_Reason::AuthenticateWebFail_Reason_INTERNAL_SERVER_ERROR;
+						switch (dbresult)
+						{
+						case INTERNAL_SERVER_ERROR:
+							reason = authentication::AuthenticateWebFail_Reason::AuthenticateWebFail_Reason_INTERNAL_SERVER_ERROR;
+							break;
+						case INVALID_CREDENTIALS:
+							reason = authentication::AuthenticateWebFail_Reason::AuthenticateWebFail_Reason_INVALID_CREDENTIALS;
+							break;
+						}
+						response.set_reason(reason);
+						serializedResponse = response.SerializeAsString();
+						cBuffer responseBuffer(DEFAULT_BUFLEN);
+						responseBuffer.WriteShortBE(serializedResponse.size());
+						responseBuffer.WriteStringBE(serializedResponse);
+
+						responseBuffer.AddHeader(commandType + 10);
+					}
+					else
+					{
+						authentication::AuthenticateWebSuccess response;
+						response.set_reqid(clientinfo.reqid());
+						response.set_userid(id);
+						response.set_creationdate(date);
+						serializedResponse = response.SerializeAsString();
+						cBuffer responseBuffer(DEFAULT_BUFLEN);
+						responseBuffer.WriteShortBE(serializedResponse.size());
+						responseBuffer.WriteStringBE(serializedResponse);
+
+						responseBuffer.AddHeader(commandType);
+					}
+
+					break;
+				}
+				default:
+					break;
 				}//end of switch
 
 				WSABUF resBuf;
@@ -457,22 +457,23 @@ int main(int argc, char** argv)
 							NULL
 						);
 					}
+				}
 			}
 		}
-	}
 
-	//Step 6: close and cleanup
-	iResult = shutdown(acceptSocket, SD_SEND);
-	if (iResult == SOCKET_ERROR) {
-		std::cout << "shutdown failed with error: " << WSAGetLastError() << std::endl;
-		closesocket(acceptSocket);
-		WSACleanup();
-		return 1;
-	}
+		//Step 6: close and cleanup
+		iResult = shutdown(acceptSocket, SD_SEND);
+		if (iResult == SOCKET_ERROR) {
+			std::cout << "shutdown failed with error: " << WSAGetLastError() << std::endl;
+			closesocket(acceptSocket);
+			WSACleanup();
+			return 1;
+		}
 
-	//DB Stuff
-	//database.Connect("127.0.0.1", "root", "password");
-	//database.CreateAccount("test@gmail.com", "password");
-	//system("Pause");
-	return 0;
+		//DB Stuff
+		//database.Connect("127.0.0.1", "root", "password");
+		//database.CreateAccount("test@gmail.com", "password");
+		//system("Pause");
+		return 0;
+	}
 }
