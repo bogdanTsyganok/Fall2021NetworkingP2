@@ -21,6 +21,8 @@
 #include <cBuffer.h>
 #include <map>
 
+#include "auth.pb.h"
+
 // Need to link with Ws2_32.lib
 #pragma comment (lib, "Ws2_32.lib")
 
@@ -166,18 +168,18 @@ int main(int argc, char** argv)
 	freeaddrinfo(auth_infoResult);
 
 	// Step #4 Send the message to the server
-	cBuffer* buffer = new cBuffer(DEFAULT_BUFLEN);
-	std::vector<std::string> messageVec;
-	messageVec.push_back("Hi");
-	CreatePacket(buffer, Command::Create, messageVec);
-	iResult = send(connectSocket, (char*)buffer->GetBuffer(), buffer->GetSize(), 0);
-	if (iResult == SOCKET_ERROR)
+	//cBuffer* buffer = new cBuffer(DEFAULT_BUFLEN);
+	//std::vector<std::string> messageVec;
+	//messageVec.push_back("Hi");
+	//CreatePacket(buffer, Command::Create, messageVec);
+	//iResult = send(connectSocket, (char*)buffer->GetBuffer(), buffer->GetSize(), 0);
+	/*if (iResult == SOCKET_ERROR)
 	{
 		printf("send failed with error: %d\n", WSAGetLastError());
 		closesocket(connectSocket);
 		WSACleanup();
 		return 1;
-	}
+	}*/
 
 	if (connectSocket == INVALID_SOCKET)
 	{
@@ -190,6 +192,7 @@ int main(int argc, char** argv)
 		std::cout << "connected to auth server!" << std::endl;
 	}
 
+	////Server acting as a server part
 	// Resolve the server address and port
 	iResult = getaddrinfo(NULL, DEFAULT_PORT, &hints, &addrResult);
 	if (iResult != 0)
@@ -402,78 +405,119 @@ int main(int argc, char** argv)
 				//2. Get the message out of the buffer
 				switch (commandtype)
 				{
-				case 1://setname
-				{
-					messageLength = client->buffer.ReadShortBE();
-					client->name = client->buffer.ReadStringBE(messageLength);
-					break;
-				}
-				case 2: //join
-				{
-					//Room name
-					messageLength = client->buffer.ReadShortBE();
-					roomName = client->buffer.ReadStringBE(messageLength);
-					rooms.insert(std::make_pair(roomName, i));
-
-					std::string responseMessage = client->name + " has joined the room: " + roomName;
-
-					response.ResetSize(responseMessage.length() + DEFAULT_HEADERLEN);
-					response.WriteShortBE(responseMessage.length());
-					response.WriteStringBE(responseMessage);
-
-					response.AddHeader(commandtype);
-
-					break;
-				}
-				case 3: //leave
-				{
-					messageLength = client->buffer.ReadShortBE();
-					roomName = client->buffer.ReadStringBE(messageLength);
-
-					for (roommapiterator it = rooms.begin(); it != rooms.end(); )
+					case 1://setname
 					{
-						roommapiterator eraseIt = it++;
-						if (eraseIt->second == i && eraseIt->first == roomName)
-						{
-							rooms.erase(eraseIt);
-						}
+						messageLength = client->buffer.ReadShortBE();
+						client->name = client->buffer.ReadStringBE(messageLength);
+						break;
 					}
+					case 2: //join
+					{
+						//Room name
+						messageLength = client->buffer.ReadShortBE();
+						roomName = client->buffer.ReadStringBE(messageLength);
+						rooms.insert(std::make_pair(roomName, i));
 
-					std::string responseMessage = client->name + " has left room:" + roomName;
+						std::string responseMessage = client->name + " has joined the room: " + roomName;
 
-					response.WriteShortBE(responseMessage.size());
-					response.WriteStringBE(responseMessage);
+						response.ResetSize(responseMessage.length() + DEFAULT_HEADERLEN);
+						response.WriteShortBE(responseMessage.length());
+						response.WriteStringBE(responseMessage);
 
-					response.AddHeader(commandtype);
+						response.AddHeader(commandtype);
 
-					break;
-				}
-				case 4: //message
-				{
-					messageLength = client->buffer.ReadShortBE();
-					roomName = client->buffer.ReadStringBE(messageLength);
-					messageLength = client->buffer.ReadShortBE();
-					received = client->buffer.ReadStringBE(messageLength);
+						break;
+					}
+					case 3: //leave
+					{
+						messageLength = client->buffer.ReadShortBE();
+						roomName = client->buffer.ReadStringBE(messageLength);
 
-					//Sender name
-					response.WriteShortBE(client->name.size());
-					response.WriteStringBE(client->name);
+						for (roommapiterator it = rooms.begin(); it != rooms.end(); )
+						{
+							roommapiterator eraseIt = it++;
+							if (eraseIt->second == i && eraseIt->first == roomName)
+							{
+								rooms.erase(eraseIt);
+							}
+						}
 
-					//Room name
-					response.WriteShortBE(roomName.size());
-					response.WriteStringBE(roomName);
+						std::string responseMessage = client->name + " has left room:" + roomName;
 
-					//Message
-					response.WriteShortBE(received.size());
-					response.WriteStringBE(received);
+						response.WriteShortBE(responseMessage.size());
+						response.WriteStringBE(responseMessage);
 
-					//Header
-					response.AddHeader(commandtype);
+						response.AddHeader(commandtype);
 
-					break;
-				}
-				default:
-					break;
+						break;
+					}
+					case 4: //message
+					{
+						messageLength = client->buffer.ReadShortBE();
+						roomName = client->buffer.ReadStringBE(messageLength);
+						messageLength = client->buffer.ReadShortBE();
+						received = client->buffer.ReadStringBE(messageLength);
+
+						//Sender name
+						response.WriteShortBE(client->name.size());
+						response.WriteStringBE(client->name);
+
+						//Room name
+						response.WriteShortBE(roomName.size());
+						response.WriteStringBE(roomName);
+
+						//Message
+						response.WriteShortBE(received.size());
+						response.WriteStringBE(received);
+
+						//Header
+						response.AddHeader(commandtype);
+
+						break;
+					}
+					case 101: 
+					{
+						///Protocol header -> email -> password
+						messageLength = client->buffer.ReadShortBE();
+						std::string email = client->buffer.ReadStringBE(messageLength);
+						messageLength = client->buffer.ReadShortBE();
+						std::string password = client->buffer.ReadStringBE(messageLength);
+						authentication::CreateAccountWeb createbuffer;
+						createbuffer.set_email(email);
+						createbuffer.set_plaintextpass(password);
+						createbuffer.set_reqid(i);
+
+						std::string serializedprotobuf = createbuffer.SerializeAsString();
+
+						response.WriteShortBE(serializedprotobuf.size());
+						response.WriteStringBE(serializedprotobuf);
+
+						response.AddHeader(commandtype);
+						break;
+					}
+					case 102:
+					{
+						///Protocol header -> email -> password
+						messageLength = client->buffer.ReadShortBE();
+						std::string email = client->buffer.ReadStringBE(messageLength);
+						messageLength = client->buffer.ReadShortBE();
+						std::string password = client->buffer.ReadStringBE(messageLength);
+						authentication::AuthenticateWeb createbuffer;
+						createbuffer.set_email(email);
+						createbuffer.set_plaintextpass(password);
+						createbuffer.set_reqid(i);
+
+						std::string serializedprotobuf = createbuffer.SerializeAsString();
+
+						response.WriteShortBE(serializedprotobuf.size());
+						response.WriteStringBE(serializedprotobuf);
+
+						response.AddHeader(commandtype);
+						break;
+					}
+					default:
+						break;
+					
 				}
 
 				client->buffer.Flush();
@@ -609,6 +653,30 @@ int main(int argc, char** argv)
 								printf("Successfully sent %d bytes!\n", SentBytes);
 							}
 							break;
+						case 101: 
+						{
+							int result = send(connectSocket, (char*)response.GetBuffer(), response.GetSize(), 0);
+							if (result == SOCKET_ERROR)
+							{
+								printf("send failed with error: %d\n", WSAGetLastError());
+								closesocket(connectSocket);
+								WSACleanup();
+								return 1;
+							}
+						}
+							break;
+						case 102:
+						{
+							int result = send(connectSocket, (char*)response.GetBuffer(), response.GetSize(), 0);
+							if (result == SOCKET_ERROR)
+							{
+								printf("send failed with error: %d\n", WSAGetLastError());
+								closesocket(connectSocket);
+								WSACleanup();
+								return 1;
+							}
+						}
+							break;
 						default:
 							break;
 						}
@@ -620,6 +688,129 @@ int main(int argc, char** argv)
 						
 				}
 			}
+		}
+
+		cBuffer recvbuf(DEFAULT_BUFLEN);
+
+		int result = recv(connectSocket, (char*)recvbuf.GetBuffer(), recvbuf.GetSize(), 0);
+
+		if (result > 0)
+		{
+			//1. Get the header out of the buffer
+			//Packet size
+			int packetSize = recvbuf.ReadIntBE();
+
+			//Command type
+			int commandtype = recvbuf.ReadIntBE();
+
+			recvbuf.ResetSize(packetSize);
+
+			if (packetSize > recvbuf.GetSize())
+			{
+				recv(connectSocket, (char*)recvbuf.GetBuffer() + recvbuf.GetSize(), packetSize - recvbuf.GetSize(), 0);
+			}
+			cBuffer responseBuffer(DEFAULT_BUFLEN);
+			int reqId;
+			//2. Get the message out of the buffer
+			switch (commandtype)
+			{
+				//Set name
+				case 101:
+				{
+					int protoLength = recvbuf.ReadShortBE();
+					std::string serializedProto = recvbuf.ReadStringBE(protoLength);
+					authentication::CreateAccountWebSuccess proto;
+					proto.ParseFromString(serializedProto);
+					std::string serverResponse = "Successfully registered!\n";
+					reqId = proto.reqid();
+					responseBuffer.WriteShortBE(serverResponse.size());
+					responseBuffer.WriteStringBE(serverResponse);
+					responseBuffer.AddHeader(commandtype);
+					break;
+				}
+				//Join
+				case 102:
+				{
+					int protoLength = recvbuf.ReadShortBE();
+					std::string serializedProto = recvbuf.ReadStringBE(protoLength);
+					authentication::AuthenticateWebSuccess proto;
+					proto.ParseFromString(serializedProto);
+					std::string serverResponse = "Successfully authenticated, account created on: " + proto.creationdate();
+					reqId = proto.reqid();
+					responseBuffer.WriteShortBE(serverResponse.size());
+					responseBuffer.WriteStringBE(serverResponse);
+					responseBuffer.AddHeader(commandtype);
+					break; 
+				}
+				case 111: 
+				{
+					int protoLength = recvbuf.ReadShortBE();
+					std::string serializedProto = recvbuf.ReadStringBE(protoLength);
+					authentication::CreateAccountWebFail proto;
+					proto.ParseFromString(serializedProto);
+					std::string serverResponse = "Failed to register\n";
+					reqId = proto.reqid();
+					std::string reason;
+					if (proto.reason() == authentication::CreateAccountWebFail_Reason::CreateAccountWebFail_Reason_ACCOUNT_ALREADY_EXISTS)
+					{
+						reason = "Account Already Exists";
+					}
+					else if(proto.reason() == authentication::CreateAccountWebFail_Reason::CreateAccountWebFail_Reason_INTERNAL_SERVER_ERROR)
+					{
+						reason = "504: Internal Server Error";
+					}
+					else if (proto.reason() == authentication::CreateAccountWebFail_Reason::CreateAccountWebFail_Reason_INVALID_PASSWORD)
+					{
+						reason = "Invalid Password";
+					}
+					serverResponse += "reason: " + reason;
+					responseBuffer.WriteShortBE(serverResponse.size());
+					responseBuffer.WriteStringBE(serverResponse);
+					responseBuffer.AddHeader(commandtype);
+					break;
+				}
+				case 112:
+				{
+					int protoLength = recvbuf.ReadShortBE();
+					std::string serializedProto = recvbuf.ReadStringBE(protoLength);
+					authentication::AuthenticateWebFail proto;
+					proto.ParseFromString(serializedProto);
+					std::string serverResponse = "Failed to login\n";
+					reqId = proto.reqid();
+					std::string reason;
+					if (proto.reason() == authentication::AuthenticateWebFail_Reason::AuthenticateWebFail_Reason_INTERNAL_SERVER_ERROR)
+					{
+						reason = "Account Already Exists";
+					}
+					else if (proto.reason() == authentication::AuthenticateWebFail_Reason::AuthenticateWebFail_Reason_INVALID_CREDENTIALS)
+					{
+						reason = "504: Internal Server Error";
+					}
+					serverResponse += "reason: " + reason;
+					responseBuffer.WriteShortBE(serverResponse.size());
+					responseBuffer.WriteStringBE(serverResponse);
+					responseBuffer.AddHeader(commandtype);
+					break;
+				}
+			}//end of switch
+
+			WSABUF resBuf;
+
+			resBuf.buf = (char*)responseBuffer.GetBuffer();
+			resBuf.len = responseBuffer.GetSize();
+
+
+			DWORD Flags = 0;
+			iResult = WSASend(
+				ClientArray[reqId]->socket,
+				&(resBuf),
+				1,
+				&SentBytes,
+				Flags,
+				NULL,
+				NULL
+			);
+
 		}
 
 	}
