@@ -435,20 +435,52 @@ int main(int argc, char **argv)
 
 				break;
 			}
+			//Create account success
 			case 101:
 			{
+				short messageLength;
+
+				//Response
+				messageLength = recvbuf.ReadShortBE();
+				std::string response = recvbuf.ReadStringBE(messageLength);
+				std::cout << response << std::endl;
+
 				break;
 			}
+			//Log in success
 			case 102:
 			{
+				short messageLength;
+
+				//Response
+				messageLength = recvbuf.ReadShortBE();
+				std::string response = recvbuf.ReadStringBE(messageLength);
+				std::cout << response << std::endl;
+
+				//Log in
+				isLoggedIn = true;
 				break;
 			}
+			//Create account fail
 			case 111:
 			{
+				short messageLength;
+
+				//Response
+				messageLength = recvbuf.ReadShortBE();
+				std::string response = recvbuf.ReadStringBE(messageLength);
+				std::cout << response << std::endl;
 				break;
 			}
+			//Login fail
 			case 112:
 			{
+				short messageLength;
+
+				//Response
+				messageLength = recvbuf.ReadShortBE();
+				std::string response = recvbuf.ReadStringBE(messageLength);
+				std::cout << response << std::endl;
 				break;
 			}
 			default:

@@ -709,6 +709,7 @@ int main(int argc, char** argv)
 		}
 		int result = recv(connectSocket, (char*)recvbuf.GetBuffer(), recvbuf.GetSize(), 0);
 
+		//Fowards info from auth server to client
 		if (result > 0)
 		{
 			//1. Get the header out of the buffer
@@ -729,7 +730,7 @@ int main(int argc, char** argv)
 			//2. Get the message out of the buffer
 			switch (commandtype)
 			{
-				//Set name
+				//Create account success
 				case 101:
 				{
 					int protoLength = recvbuf.ReadShortBE();
@@ -743,7 +744,7 @@ int main(int argc, char** argv)
 					responseBuffer.AddHeader(commandtype);
 					break;
 				}
-				//Join
+				//Authenticate success
 				case 102:
 				{
 					int protoLength = recvbuf.ReadShortBE();
@@ -757,6 +758,7 @@ int main(int argc, char** argv)
 					responseBuffer.AddHeader(commandtype);
 					break; 
 				}
+				//Create account success
 				case 111: 
 				{
 					int protoLength = recvbuf.ReadShortBE();
@@ -784,6 +786,7 @@ int main(int argc, char** argv)
 					responseBuffer.AddHeader(commandtype);
 					break;
 				}
+				//Authenticate fail
 				case 112:
 				{
 					int protoLength = recvbuf.ReadShortBE();
