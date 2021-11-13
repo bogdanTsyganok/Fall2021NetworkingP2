@@ -501,6 +501,7 @@ int main(int argc, char** argv)
 						//Email
 						std::string email = client->buffer.ReadStringBE(messageLength);
 						messageLength = client->buffer.ReadShortBE();
+						client->name = email;
 						
 						//Password
 						std::string password = client->buffer.ReadStringBE(messageLength);
